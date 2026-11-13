@@ -76,7 +76,7 @@ export async function deliverPush(store, to, msg, kind, subIn) {
     if (r.status === 404 || r.status === 410) await store.delete(`n/${to}`);
   } catch {}
 }
-const prefsOf = (p) => { p = p || {}; return { text: p.text !== false, call: p.call !== false, job: p.job !== false, chat: p.chat !== false }; };
+const prefsOf = (p) => { p = p || {}; return { text: p.text !== false, call: p.call !== false, job: p.job !== false, chat: p.chat !== false, pet: p.pet !== false }; };
 async function activeNow(store, to) {
   const pl = await store.list({ prefix: "p/" }); const now = Date.now();
   const all = await Promise.all(pl.blobs.map((x) => store.get(x.key, { type: "json" })));

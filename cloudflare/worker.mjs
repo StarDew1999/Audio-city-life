@@ -15,6 +15,7 @@ export class Live {
     this.sql.exec("CREATE TABLE IF NOT EXISTS pq (id INTEGER PRIMARY KEY AUTOINCREMENT, j TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS cfg (k TEXT PRIMARY KEY, v TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS seen (k TEXT PRIMARY KEY, t INTEGER)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS rq (u TEXT, tag TEXT, at INTEGER, msg TEXT, PRIMARY KEY (u, tag))");
     this.miss = new Map(); this.lastReq = 0; this.bridgeCfg = undefined;
     this.store = this.makeStore();
     this.push = (to, msg, kind, sub) => { this.sql.exec("INSERT INTO pq (j) VALUES (?)", JSON.stringify({ to, msg, kind, sub: sub || null })); this.soon(300); };
@@ -127,6 +128,7 @@ export class Live {
   soon(ms) { this.ctx.storage.getAlarm().then((a) => { const at = Date.now() + ms; if (!a || a > at) this.ctx.storage.setAlarm(at); }).catch(() => {}); }
   async alarm() {
     const now = Date.now();
+    try { this.dueReminders(now); } catch {}
     const jobs = this.sql.exec("SELECT id, j FROM pq ORDER BY id LIMIT 8").toArray();
     for (const j of jobs) { this.sql.exec("DELETE FROM pq WHERE id = ?", j.id); try { const x = JSON.parse(j.j); await deliverPush(this.store, x.to, x.msg, x.kind, x.sub); } catch {} }
     const more = this.sql.exec("SELECT COUNT(*) AS n FROM pq").one().n > 0;
@@ -139,6 +141,7 @@ export class Live {
       if (JSON.parse(this.cfgGet("bulkneed") || "[]").length) next = now + 3000;
     }
     if (more) next = now + 1000;
+    try { const r = this.sql.exec("SELECT MIN(at) AS a FROM rq").one(); if (r && r.a && (!next || r.a < next)) next = Math.max(now + 1000, r.a); } catch {}
     if (next) await this.ctx.storage.setAlarm(next);
   }
   touch() {
@@ -147,8 +150,26 @@ export class Live {
   }
   poke() { for (const ws of this.ctx.getWebSockets()) { try { ws.send('{"poke":1}'); } catch {} } }
 
+  // ---- scheduled reminders, like "your pet is hungry", sent as notifications when they come due ----
+  remind(b) {
+    const u = String(b.nm || "").trim().toLowerCase().slice(0, 40); if (!u) return json({ error: "bad" }, 400);
+    const now = Date.now(); this.sql.exec("DELETE FROM rq WHERE u = ?", u);
+    for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 12)) {
+      const at = Number(it.at) || 0; if (at < now || at > now + 31 * 864e5) continue;
+      const msg = { title: String(it.title || "Audio City Life").slice(0, 60), body: String(it.body || "").replace(/[<>]/g, "").slice(0, 200), tag: String(it.tag || "r").slice(0, 20) };
+      this.sql.exec("INSERT OR REPLACE INTO rq (u, tag, at, msg) VALUES (?, ?, ?, ?)", u, msg.tag, at, JSON.stringify(msg));
+    }
+    this.armReminders(); return json({ ok: true });
+  }
+  armReminders() { const r = this.sql.exec("SELECT MIN(at) AS a FROM rq").one(); if (r && r.a) this.soon(Math.max(1000, r.a - Date.now())); }
+  dueReminders(now) {
+    const due = this.sql.exec("SELECT u, tag, msg FROM rq WHERE at <= ? LIMIT 20", now).toArray();
+    for (const d of due) { this.sql.exec("DELETE FROM rq WHERE u = ? AND tag = ?", d.u, d.tag); try { this.push(d.u, JSON.parse(d.msg), "pet"); } catch {} }
+  }
+
   async run(bodyText) {
     let op = ""; try { op = JSON.parse(bodyText).op || ""; } catch {}
+    if (op === "remind") { try { return this.remind(JSON.parse(bodyText)); } catch { return json({ error: "bad" }, 400); } }
     const res = await handle(new Request("https://live/api/live", { method: "POST", body: bodyText }), this.store, { push: this.push });
     if (POKE_OPS.has(op) && res.status === 200) this.poke();
     return res;
