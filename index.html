@@ -246,7 +246,7 @@ function crickets(){every(600,1500,()=>{const p=rnd(-.8,.8);for(let i=0;i<4;i++)
 function dishClinks(){every(1500,4000,()=>tone(rnd(2500,4200),.2,{vol:.035,pan:rnd(-.7,.7),dest:AMB}))}
 /* ===== REAL RECORDED SOUNDS (CC0 / Pixabay license, from the Moodist project; menu sounds by Kenney, CC0) ===== */
 const RB={},RP={};
-const SOUND_BASE=/netlify\.app$|github\.io$/.test(location.hostname)?'https://cdn.jsdelivr.net/gh/StarDew1999/Audio-city-life@main/sounds/':'sounds/';
+const SOUND_BASE=/netlify\.app$|github\.io$|workers\.dev$/.test(location.hostname)?'https://cdn.jsdelivr.net/gh/StarDew1999/Audio-city-life@main/sounds/':'sounds/';
 function loadReal(n){if(RB[n])return Promise.resolve(RB[n]);if(RP[n])return RP[n];
  RP[n]=(()=>{const f=n.includes('.')?n:n+'.mp3';return fetch(SOUND_BASE+f).then(r=>{if(!r.ok)throw 0;return r}).catch(()=>fetch('sounds/'+f))})().then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()}).then(b=>new Promise((ok,no)=>AC.decodeAudioData(b,ok,no))).then(buf=>{RB[n]=buf;return buf}).catch(()=>{delete RP[n];return null});return RP[n]}
 function realLoop(n,vol,dest){let stopped=false,s=null,g=null;
@@ -1408,16 +1408,24 @@ async function bowl(){if(busy)return;if(!tryPay(14))return;busy=true;let total=0
 /* ---- live players (works only for signed-in people the platform admits) ---- */
 const NETLIFY_HOME='https://audio-city-life.netlify.app',GITHUB_HOME='https://stardew1999.github.io/Audio-city-life/';
 const CHAT_SERVER='https://chat--audio-city-life.netlify.app/api/live';
-const API=window.ACL_API||(/netlify\.app$|localhost|127\.0\.0\.1/.test(location.hostname)?'/api/live':CHAT_SERVER);
+const CF_ORIGIN='';const ON_CF=/workers\.dev$/.test(location.hostname);
+const API=window.ACL_API||(ON_CF?location.origin+'/api/live':(CF_ORIGIN&&/netlify\.app$/.test(location.hostname))?CF_ORIGIN+'/api/live':(/netlify\.app$|localhost|127\.0\.0\.1/.test(location.hostname)?'/api/live':CHAT_SERVER));
+const WS_URL=window.ACL_WS!=null?window.ACL_WS:((ON_CF||(CF_ORIGIN&&API.indexOf(CF_ORIGIN)===0))?new URL(API,location.href).href.replace(/^http/,'ws').replace(/\/api\/live$/,'/api/ws'):'');
+let WS=null,WS_OK=false,WS_BAD=0,WS_ID=0,WS_FAILS=0;const WS_WAIT={};
+function wsOpen(){if(!WS_URL||WS||Date.now()<WS_BAD||!window.WebSocket)return;let w;try{w=new WebSocket(WS_URL)}catch(e){WS_BAD=Date.now()+60000;return}WS=w;
+ w.onopen=()=>{if(WS===w)WS_OK=true};
+ w.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(m.poke){if(!document.hidden&&typeof liveSchedule==='function'&&!LIVE_BUSY)liveSchedule(250);return}if(m.id!=null&&WS_WAIT[m.id]){const f=WS_WAIT[m.id];delete WS_WAIT[m.id];f(m)}};
+ const gone=()=>{if(WS===w){WS=null;WS_OK=false;for(const k in WS_WAIT){const f=WS_WAIT[k];delete WS_WAIT[k];f(null)}}};w.onclose=gone;w.onerror=gone}
+function wsCall(o){return new Promise(res=>{const id=++WS_ID;const tm=setTimeout(()=>{delete WS_WAIT[id];res(null)},8000);WS_WAIT[id]=m=>{clearTimeout(tm);res(m)};try{WS.send(JSON.stringify({id,b:o}))}catch(e){clearTimeout(tm);delete WS_WAIT[id];res(null)}})}
 let ROOM=null,PRES={};const lastSeen={},seenDM={},seenCall={};const clean=s=>String(s==null?'':s).replace(/[<>]/g,'').slice(0,200);
 const cleanMsg=s=>String(s==null?'':s).replace(/[<>]/g,'').slice(0,5000);
 const sameName=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
 let CALL=null;
 let LIVE_PLAYERS=[],LIVE_CHAT_SINCE=Date.now(),LIVE_T=null,LIVE_BUSY=false,LIVE_FAILS=0;
-async function liveCall(o){const ac=window.AbortController?new AbortController():null;const tm=setTimeout(()=>{try{ac&&ac.abort()}catch(e){}},20000);let r;try{r=await fetch(API,{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify(o),signal:ac?ac.signal:undefined})}finally{clearTimeout(tm)}if(!r.ok)throw new Error('live '+r.status);return r.json()}
+async function liveCall(o){if(WS_URL){wsOpen();if(WS&&WS_OK){const m=await wsCall(o);if(m&&m.s===200){WS_FAILS=0;return m.r}if(m&&m.s)throw new Error('live '+m.s);if(++WS_FAILS>=2){try{WS&&WS.close()}catch(e){}WS=null;WS_OK=false;WS_BAD=Date.now()+120000;WS_FAILS=0}}}const ac=window.AbortController?new AbortController():null;const tm=setTimeout(()=>{try{ac&&ac.abort()}catch(e){}},20000);let r;try{r=await fetch(API,{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify(o),signal:ac?ac.signal:undefined})}finally{clearTimeout(tm)}if(!r.ok)throw new Error('live '+r.status);return r.json()}
 function liveSend(o){if(!ROOM)return;liveCall(Object.assign({op:'send',from:clean(S.name||'Player')},o)).catch(()=>{})}
 let HIDDEN_AT=0;
-function liveEvery(){if(VC.on){const pend=Object.values(VC.peers).some(p=>!p.ok)||vcWanted().some(p=>!VC.peers[p.id]);if(pend)return 1500;if(!document.hidden||Object.keys(VC.peers).length)return 5000}const fast=CALL||cur===chatScreen||(cur&&/textScreen|callScreen|friend|dmScreen/.test(String(cur)));if(document.hidden){HIDDEN_AT=HIDDEN_AT||Date.now();return Date.now()-HIDDEN_AT>3*60000?1800000:60000}HIDDEN_AT=0;const idle=Date.now()-LAST_ACT>10*60000;if(fast)return idle?20000:5000;return idle?90000:30000}
+function liveEvery(){if(VC.on){const pend=Object.values(VC.peers).some(p=>!p.ok)||vcWanted().some(p=>!VC.peers[p.id]);if(pend)return 1500;if(!document.hidden||Object.keys(VC.peers).length)return 5000}const fast=CALL||cur===chatScreen||(cur&&/textScreen|callScreen|friend|dmScreen/.test(String(cur)));if(document.hidden){HIDDEN_AT=HIDDEN_AT||Date.now();return Date.now()-HIDDEN_AT>3*60000?1800000:60000}HIDDEN_AT=0;const idle=Date.now()-LAST_ACT>10*60000;if(fast)return idle?20000:(WS_OK?12000:5000);return idle?90000:30000}
 let LAST_ACT=Date.now();['keydown','pointerdown','touchstart','click'].forEach(ev=>document.addEventListener(ev,()=>{const was=Date.now()-LAST_ACT>10*60000;LAST_ACT=Date.now();if(was&&typeof liveSchedule==='function')liveSchedule(300)},{passive:true,capture:true}));
 function liveSchedule(ms){clearTimeout(LIVE_T);LIVE_T=setTimeout(liveSync,ms==null?liveEvery():ms)}
 async function liveSync(){if(LIVE_BUSY){liveSchedule();return}if(!S||!S.started||!S.name){liveSchedule(5000);return}LIVE_BUSY=true;

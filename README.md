@@ -17,3 +17,9 @@ Sounds load from jsDelivr (cdn.jsdelivr.net/gh/StarDew1999/Audio-city-life@main/
 ## Rules for every update
 - Update the in-game How-to guide (guideScreen) and the WHATSNEW message with every change, big or small, including steps for how to use each new thing.
 - Test before uploading. Only real recorded sounds (CC0 or Pixabay license).
+
+## Cloudflare (free live chat)
+- `wrangler.jsonc` + `cloudflare/worker.mjs` run the game and live chat on Cloudflare Workers (free plan). Chat uses one Durable Object with a live WebSocket link; the game falls back to normal requests if the link drops.
+- The chat logic is shared with Netlify in `netlify-server/lib/core.mjs`.
+- While players are on both servers, a bridge copies chat lines, private messages, voice messages, who's online, saves, profiles, shops and notification sign-ups between Netlify and Cloudflare every 20 seconds. The bridge key is stored privately (Netlify env var BRIDGE_KEY and the Cloudflare D1 database acl-config), never in this repo.
+- Cloudflare deploys automatically from this GitHub repo on every push to main (Workers Builds).
