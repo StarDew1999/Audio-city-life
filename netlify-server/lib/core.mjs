@@ -174,7 +174,7 @@ export async function handle(req, store, opts = {}) {
     if (b.op === "sync") {
       const id = clean(b.id, 40), nm = clean(b.nm, 40), at = clean(b.at, 40), me = low(nm);
       if (nm && b.prof && typeof b.prof === "object") { try { const pf = JSON.parse(JSON.stringify(b.prof).slice(0, 4000)); await store.setJSON(`u/${me}`, { ...pf, t: now }); } catch {} }
-      if (id && nm) await store.setJSON(`p/${id}`, { nm, at, t: now, vc: b.vc ? 1 : 0, hid: b.hid ? 1 : 0, act: clean(b.act, 60) });
+      if (id && nm) await store.setJSON(`p/${id}`, { nm, at, t: now, vc: b.vc === 2 ? 2 : b.vc ? 1 : 0, hid: b.hid ? 1 : 0, act: clean(b.act, 60) });
       const since = Number(b.since) || now, isince = Number(b.isince) || now - 7 * 864e5;
       const [pl, ch, ib, sg] = await Promise.all([
         store.list({ prefix: "p/" }),
@@ -199,7 +199,7 @@ export async function handle(req, store, opts = {}) {
         try { const vb = await store.list({ prefix: "v/" }); old.push(...vb.blobs.map((x) => x.key).filter((k) => now - Number(k.slice(2, 16)) > 7 * 864e5)); } catch {}
         await Promise.all(old.slice(0, 100).map((k) => store.delete(k)));
       }
-      return json({ now, players: pres.map(({ id, nm, at, vc, act }) => ({ id, nm, at, vc: vc ? 1 : 0, act: act || "" })), chat, inbox, sig });
+      return json({ now, players: pres.map(({ id, nm, at, vc, act }) => ({ id, nm, at, vc: vc === 2 ? 2 : vc ? 1 : 0, act: act || "" })), chat, inbox, sig });
     }
     if (b.op === "chat") {
       const msg = clean(b.msg, 5000); if (!msg) return json({ error: "empty" }, 400);
