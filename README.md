@@ -1,6 +1,6 @@
 # Audio City Life
 
-An accessible audio city life game, built for screen readers. Play free at https://audio-city-life.netlify.app
+An accessible audio city life game, built for screen readers. Play free at https://audio-city-life.audiocitylife.workers.dev (the permanent home). The old Netlify links were paused in November 2026 after hitting Netlify's usage limits.
 
 - The game (index.html, sounds, sw.js, manifest.json, icons) is served from this repository by GitHub Pages: https://stardew1999.github.io/Audio-city-life/
 - netlify-server/ is deployed to the Netlify site (ID 6184a8fb-7a14-45bc-868c-d09fa4a9a38e). It keeps the original web address, runs the chat server at /api/live, and quietly fetches everything else from GitHub Pages. Only deploy it to Netlify when netlify-server/ changes, since each Netlify deploy uses 15 credits.
@@ -15,7 +15,9 @@ The game is played at https://play--audio-city-life.netlify.app, a Netlify *bran
 Sounds load from jsDelivr (cdn.jsdelivr.net/gh/StarDew1999/Audio-city-life@main/sounds/), with the uploaded copy as a backup.
 
 ## Rules for every update
-- Update the in-game How-to guide (guideScreen) and the WHATSNEW message with every change, big or small, including steps for how to use each new thing.
+- Update the in-game How-to guide (guideScreen) with every change, big or small, including steps for how to use each new thing. New guide sections go at the end, just before What's new (add them to the NEW list too).
+- Rewrite the WHATSNEW message in index.html with every update so it is always current: newest changes first, and drop items older than the last few updates (the How-to guide keeps the details). Players hear it on the start screen once after each update, and any time with the What's new button.
+- Bump VERSION in index.html with every update, so What's new plays again for everyone.
 - Test before uploading. Only real recorded sounds (CC0 or Pixabay license).
 
 ## Cloudflare (free live chat)
