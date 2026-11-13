@@ -246,9 +246,9 @@ function crickets(){every(600,1500,()=>{const p=rnd(-.8,.8);for(let i=0;i<4;i++)
 function dishClinks(){every(1500,4000,()=>tone(rnd(2500,4200),.2,{vol:.035,pan:rnd(-.7,.7),dest:AMB}))}
 /* ===== REAL RECORDED SOUNDS (CC0 / Pixabay license, from the Moodist project; menu sounds by Kenney, CC0) ===== */
 const RB={},RP={};
-const SOUND_BASE=/netlify\.app$/.test(location.hostname)?'https://stardew1999.github.io/Audio-city-life/sounds/':'sounds/';
+const SOUND_BASE=/netlify\.app$|github\.io$/.test(location.hostname)?'https://cdn.jsdelivr.net/gh/StarDew1999/Audio-city-life@main/sounds/':'sounds/';
 function loadReal(n){if(RB[n])return Promise.resolve(RB[n]);if(RP[n])return RP[n];
- RP[n]=fetch(SOUND_BASE+(n.includes('.')?n:n+'.mp3')).then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()}).then(b=>new Promise((ok,no)=>AC.decodeAudioData(b,ok,no))).then(buf=>{RB[n]=buf;return buf}).catch(()=>{delete RP[n];return null});return RP[n]}
+ RP[n]=(()=>{const f=n.includes('.')?n:n+'.mp3';return fetch(SOUND_BASE+f).then(r=>{if(!r.ok)throw 0;return r}).catch(()=>fetch('sounds/'+f))})().then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()}).then(b=>new Promise((ok,no)=>AC.decodeAudioData(b,ok,no))).then(buf=>{RB[n]=buf;return buf}).catch(()=>{delete RP[n];return null});return RP[n]}
 function realLoop(n,vol,dest){let stopped=false,s=null,g=null;
  const stop=()=>{stopped=true;try{if(g){const t=T();g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+.6)}if(s)s.stop(T()+.7)}catch(e){}};
  ambStops.push(stop);

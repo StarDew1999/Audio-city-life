@@ -1,0 +1,21 @@
+# netlify.toml used for the free "play" branch upload (https://play--audio-city-life.netlify.app).
+# Upload the game files + netlify/functions + package.json with this file renamed to netlify.toml,
+# as a branch deploy named "play". Branch deploys use no credits.
+[build]
+  publish = "."
+  command = "echo ready"
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
