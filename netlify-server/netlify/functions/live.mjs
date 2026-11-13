@@ -199,11 +199,12 @@ export default async (req) => {
     if (b.op === "profile") { const u = low(b.nm); const prof = u ? await store.get(`u/${u}`, { type: "json" }) : null; return json({ ok: !!prof, prof }); }
     if (b.op === "send") {
       const to = low(b.to); if (!to) return json({ error: "no recipient" }, 400);
-      const type = ["text", "call", "cl", "bizpay", "bizinvite", "pay", "gift", "meet", "visit"].includes(b.type) ? b.type : "text";
+      const type = ["text", "call", "cl", "bizpay", "bizinvite", "pay", "gift", "meet", "visit", "dm"].includes(b.type) ? b.type : "text";
       await store.setJSON(`i/${to}/${pad(now)}-${rid()}`, { from: clean(b.from, 40), type, msg: clean(b.msg, 5000), st: clean(b.st, 10), cid: clean(b.cid, 20) });
       const from = clean(b.from, 40);
       if (type === "text") await notify(store, to, { title: from, body: clean(b.msg, 120), tag: "t-" + low(from) }, "text");
       else if (type === "call" && b.st === "ring") await notify(store, to, { title: from + " is calling you", body: "Open Audio City Life to answer.", tag: "call" }, "call");
+      else if (type === "dm") await notify(store, to, { title: "Private message from " + from, body: clean(b.msg, 120), tag: "dm-" + low(from) }, "text");
       else if (type === "gift") await notify(store, to, { title: from + " sent you a gift", body: "Open Audio City Life to see it.", tag: "gift" }, "text");
       else if (type === "meet") await notify(store, to, { title: from + " wants to meet up", body: "Open Audio City Life to go meet them.", tag: "meet" }, "text");
       else if (type === "visit") await notify(store, to, { title: from + " rang your doorbell", body: "They stopped by your home in Audio City Life.", tag: "visit" }, "text");
