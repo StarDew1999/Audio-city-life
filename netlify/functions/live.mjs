@@ -5,7 +5,8 @@ const clean = (s, n = 200) => String(s == null ? "" : s).replace(/[<>]/g, "").tr
 const low = (s) => clean(s, 40).toLowerCase().replace(/[^a-z0-9 _.-]/g, "").replace(/\s+/g, "_");
 const pad = (t) => String(t).padStart(14, "0");
 const rid = () => Math.random().toString(36).slice(2, 8);
-const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
+const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json", "cache-control": "no-store", ...CORS } });
 
 
 const b64u = (b) => Buffer.from(b).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -75,14 +76,15 @@ async function notifyChat(store, fromName, body) {
 }
 
 export default async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") {
     const qs = new URL(req.url).searchParams, v = qs.get("v");
     if (qs.get("vapid")) { const k = await vapidKeys(getStore({ name: "live", consistency: "strong" })); return json({ key: k.pub }); }
     if (v && /^v\/[0-9]{14}-[a-z0-9]{1,8}$/.test(v)) {
       const store = getStore({ name: "live", consistency: "strong" });
       const e = await store.getWithMetadata(v, { type: "arrayBuffer" });
-      if (e === null) return new Response("gone", { status: 404 });
-      return new Response(e.data, { headers: { "content-type": (e.metadata && e.metadata.mime) || "audio/mp4", "cache-control": "public, max-age=604800" } });
+      if (e === null) return new Response("gone", { status: 404, headers: CORS });
+      return new Response(e.data, { headers: { "content-type": (e.metadata && e.metadata.mime) || "audio/mp4", "cache-control": "public, max-age=604800", ...CORS } });
     }
     return json({ ok: true, hello: "Audio City Life live service" });
   }
@@ -164,6 +166,18 @@ export default async (req) => {
       const l = await store.list({ prefix: "b/" });
       const shops = (await Promise.all(l.blobs.slice(0, 60).map((x) => store.get(x.key, { type: "json" })))).filter((v) => v && now - v.t < 30 * 864e5);
       return json({ shops });
+    }
+    if (b.op === "xfer") {
+      const data = String(b.data || ""); if (!data || data.length > 900000) return json({ error: "bad" }, 400);
+      const code = crypto.randomBytes(9).toString("hex");
+      await store.setJSON(`x/${code}`, { data, t: now });
+      return json({ ok: true, code });
+    }
+    if (b.op === "xget") {
+      const code = String(b.code || "").replace(/[^a-z0-9]/g, "").slice(0, 40);
+      const cur = code && await store.get(`x/${code}`, { type: "json" });
+      if (!cur || now - cur.t > 30 * 864e5) return json({ ok: false });
+      return json({ ok: true, data: cur.data });
     }
     if (b.op === "sig") {
       const to = clean(b.to, 40), from = clean(b.from, 40); if (!to || !from) return json({ error: "bad" }, 400);

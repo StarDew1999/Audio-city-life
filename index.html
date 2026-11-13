@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Audio City">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#0e1320">
 <title>Audio City Life</title>
 <style>
@@ -84,7 +84,7 @@ function defState(){return{cash:300,bank:2500,loan:0,hasID:false,license:false,h
  settings:{vol:0.8,amb:true,dir:false,relaxed:true,ignoreHours:false,cityChat:true,beacon:true,tz:''},friends:[],texts:[],sent:[]}}
 let S;
 function load(){try{const j=localStorage.getItem(SAVE);if(j){const d=defState(),o=JSON.parse(j);S=Object.assign(d,o);S.settings=Object.assign(defState().settings,o.settings||{});S.appl=Object.assign(defState().appl,o.appl||{});return}}catch(e){}S=defState()}
-function save(){try{const h=clock().h;if(S&&S.started){if(h>=0&&h<4)S.nightOwl=true;if(h>=5&&h<7)S.earlyBird=true}}catch(e){}syncHome();checkAch();try{checkQuests()}catch(e){}S.cash=r2(S.cash);S.bank=r2(S.bank);S.loan=r2(S.loan);try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}try{cloudSaveSoon()}catch(e){}}
+function save(){try{const h=clock().h;if(S&&S.started){if(h>=0&&h<4)S.nightOwl=true;if(h>=5&&h<7)S.earlyBird=true}}catch(e){}syncHome();checkAch();try{checkQuests()}catch(e){}S.cash=r2(S.cash);S.bank=r2(S.bank);S.loan=r2(S.loan);S.savedAt=Date.now();try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}try{cloudSaveSoon()}catch(e){}}
 
 /* ================= SPEECH / ANNOUNCE ================= */
 const live=$('#live'),alertR=$('#alert');
@@ -1375,12 +1375,14 @@ async function bowl(){if(busy)return;if(!tryPay(14))return;busy=true;let total=0
   total+=fs;if(f>5)break}
  busy=false;S.energy=clamp(S.energy-5,0,100);save();await feedback('Game over',`You scored ${total} pins in 5 frames.`);placeScreen(S.loc)}
 /* ---- live players (works only for signed-in people the platform admits) ---- */
+const NETLIFY_HOME='https://audio-city-life.netlify.app',GITHUB_HOME='https://stardew1999.github.io/Audio-city-life/';
+const API=window.ACL_API||(/netlify\.app$|localhost|127\.0\.0\.1/.test(location.hostname)?'/api/live':NETLIFY_HOME+'/api/live');
 let ROOM=null,PRES={};const lastSeen={},seenDM={},seenCall={};const clean=s=>String(s==null?'':s).replace(/[<>]/g,'').slice(0,200);
 const cleanMsg=s=>String(s==null?'':s).replace(/[<>]/g,'').slice(0,5000);
 const sameName=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
 let CALL=null;
 let LIVE_PLAYERS=[],LIVE_CHAT_SINCE=Date.now(),LIVE_T=null,LIVE_BUSY=false,LIVE_FAILS=0;
-async function liveCall(o){const ac=window.AbortController?new AbortController():null;const tm=setTimeout(()=>{try{ac&&ac.abort()}catch(e){}},20000);let r;try{r=await fetch('/api/live',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(o),signal:ac?ac.signal:undefined})}finally{clearTimeout(tm)}if(!r.ok)throw new Error('live '+r.status);return r.json()}
+async function liveCall(o){const ac=window.AbortController?new AbortController():null;const tm=setTimeout(()=>{try{ac&&ac.abort()}catch(e){}},20000);let r;try{r=await fetch(API,{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify(o),signal:ac?ac.signal:undefined})}finally{clearTimeout(tm)}if(!r.ok)throw new Error('live '+r.status);return r.json()}
 function liveSend(o){if(!ROOM)return;liveCall(Object.assign({op:'send',from:clean(S.name||'Player')},o)).catch(()=>{})}
 function liveEvery(){if(VC.on){const pend=Object.values(VC.peers).some(p=>!p.ok)||vcWanted().some(p=>!VC.peers[p.id]);if(pend)return 1500;if(!document.hidden||Object.keys(VC.peers).length)return 5000}const fast=CALL||cur===chatScreen||(cur&&/textScreen|callScreen|friend/.test(String(cur)));return document.hidden?30000:fast?3500:12000}
 function liveSchedule(ms){clearTimeout(LIVE_T);LIVE_T=setTimeout(liveSync,ms==null?liveEvery():ms)}
@@ -1400,7 +1402,7 @@ async function liveSync(){if(LIVE_BUSY){liveSchedule();return}if(!S||!S.started|
  catch(e){LIVE_FAILS++;if(LIVE_FAILS>3)ROOM=null}
  finally{LIVE_BUSY=false;liveSchedule(LIVE_FAILS>3?60000:null)}}
 let REC=null;
-async function playVoice(vkey){try{initAudio();const r=await fetch('/api/live?v='+encodeURIComponent(vkey));if(!r.ok)throw 0;const ab=await r.arrayBuffer();const buf=await new Promise((ok,no)=>AC.decodeAudioData(ab,ok,no));const src_=AC.createBufferSource();src_.buffer=buf;const g=AC.createGain();g.gain.value=voiceGain(buf);buses();src_.connect(g);g.connect(VOX||MASTER);src_.start()}catch(e){say('That voice message could not be played on this device.')}}
+async function playVoice(vkey){try{initAudio();const r=await fetch(API+'?v='+encodeURIComponent(vkey));if(!r.ok)throw 0;const ab=await r.arrayBuffer();const buf=await new Promise((ok,no)=>AC.decodeAudioData(ab,ok,no));const src_=AC.createBufferSource();src_.buffer=buf;const g=AC.createGain();g.gain.value=voiceGain(buf);buses();src_.connect(g);g.connect(VOX||MASTER);src_.start()}catch(e){say('That voice message could not be played on this device.')}}
 function sendVoice(o,b64,mime,secs){if(!ROOM){sfx.error();say('Voice messages are not connected right now. Check your internet connection.');return Promise.resolve(null)}say('Sending your voice message.');return liveCall(Object.assign({op:'voice',nm:clean(S.name),at:S.loc,id:S.pid,data:b64,mime,secs},o)).then(r=>{sfx.ok();say(o.to&&o.kind!=='call'&&!onlineNamed(o.to)?`Voice message sent. ${o.to} is offline, so they'll get it next time they play.`:'Voice message sent.');return r&&r.vkey}).catch(()=>{sfx.error();say('Your voice message did not go through. Check your internet connection.');return null})}
 let LASTVOICE=null;
 function initRoom(){liveSchedule(1500);setTimeout(()=>{try{checkLevels();dailyBonus()}catch(e){}},3000);setTimeout(()=>{try{notifRefresh()}catch(e){}},4000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)liveSchedule(300)})}
@@ -2851,7 +2853,7 @@ function isStandalone(){try{return matchMedia('(display-mode: standalone)').matc
 function b64uBytes(s){s=s.replace(/-/g,'+').replace(/_/g,'/');s+='==='.slice((s.length+3)%4);const b=atob(s),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a}
 function notifOn(){return!!(S.settings.notif&&'Notification' in window&&Notification.permission==='granted')}
 function notifLabel(){return notifOn()?'Notifications when you are away: on. Turn them off':'Turn on notifications for texts, voice messages, and calls when you are not in the game'}
-async function notifSubscribe(){const reg=await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;const k=await(await fetch('/api/live?vapid=1')).json();let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(k.key)});await liveCall({op:'pushsub',nm:clean(S.name),sub:sub.toJSON(),prefs:notifPrefs()})}
+async function notifSubscribe(){const reg=await navigator.serviceWorker.register('sw.js',{scope:'./'});await navigator.serviceWorker.ready;const k=await(await fetch(API+'?vapid=1')).json();let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(k.key)});await liveCall({op:'pushsub',nm:clean(S.name),sub:sub.toJSON(),prefs:notifPrefs()})}
 async function notifToggle(){initAudio();
  if(notifOn()){S.settings.notif=false;save();try{const reg=await navigator.serviceWorker.getRegistration();const sub=reg&&await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe()}catch(e){}liveCall({op:'pushoff',nm:clean(S.name)}).catch(()=>{});say('Notifications are off.');refresh();return}
  if(IOSDEV&&!isStandalone()){sfx.error();say('On iPhone and iPad, notifications only work when you play from the Home Screen. In Safari, choose the Share button, then Add to Home Screen, then Add. Open Audio City Life from your Home Screen, restore your game with your backup PIN if it starts over, and turn on notifications there.');return}
@@ -3206,7 +3208,17 @@ async function charCreate(isNew){busy=true;S.look=S.look||{};
   F.items.forEach(([n,slot,c])=>{S.clothes.push({n,c,s:slot==='shoes'?'Size 7':'Medium',slot});S.wearing[slot]=S.clothes.length-1})}
  S.started=true;S.seenVer=VERSION;dailyReward();save();busy=false;pushPresence();sfx.levelup();
  await feedback('Your character',describeMe()+(isNew?' You rent a small studio with $300 cash and $2,500 in the bank. Use Go somewhere at the bottom of each screen to explore.':''),isNew?'Start playing':'Done');placeScreen(isNew?'home':S.loc)}
+const MOVE_TO_GITHUB=true;
+async function moveCheck(){
+ if(MOVE_TO_GITHUB&&/netlify\.app$/.test(location.hostname)){let code='';try{const raw=localStorage.getItem(SAVE);if(raw){const r=await fetch('/api/live',{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify({op:'xfer',data:raw})});const d=await r.json();code=d.code||''}}catch(e){}
+  document.body.innerHTML='<main id="main"><h1 tabindex="-1">Audio City Life has moved!</h1><p>Taking you to the new home of the game now. Your game comes with you.</p></main>';
+  location.replace(GITHUB_HOME+(code?'#xfer='+code:''));return true}
+ const m=location.hash.match(/xfer=([a-z0-9]+)/);if(m){try{const r=await fetch(API,{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify({op:'xget',code:m[1]})});const d=await r.json();
+  if(d.data){const cur=localStorage.getItem(SAVE);let keep=false;try{if(cur){const a=JSON.parse(cur),b=JSON.parse(d.data);keep=a.started&&(a.savedAt||0)>(b.savedAt||0)}}catch(e){}if(!keep)localStorage.setItem(SAVE,d.data)}}catch(e){}history.replaceState(null,'',location.pathname)}
+ return false}
+moveCheck().then(moved=>{if(moved)return;
 wrapJobs();load();syncHome();if(S.loc==='nightclub')S.clubIn=false;titleScreen();initRoom();
+});
 </script>
 </body>
 </html>
