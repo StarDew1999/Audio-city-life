@@ -13,3 +13,7 @@ The game is played at https://play--audio-city-life.netlify.app, a Netlify *bran
 2. Zip index.html, sw.js, manifest.json, icons, sounds/, package.json, netlify/functions (from netlify-server/) and netlify-server/play-netlify.toml renamed to netlify.toml.
 3. Get an upload link from the Netlify connector's deploy-site tool and run: node netlify-server/branch-upload.mjs "<proxy-path>" 6184a8fb-7a14-45bc-868c-d09fa4a9a38e play  (it reads /tmp/branchdeploy/s.zip).
 Sounds load from jsDelivr (cdn.jsdelivr.net/gh/StarDew1999/Audio-city-life@main/sounds/), with the uploaded copy as a backup.
+
+## Rules for every update
+- Update the in-game How-to guide (guideScreen) and the WHATSNEW message with every change, big or small, including steps for how to use each new thing.
+- Test before uploading. Only real recorded sounds (CC0 or Pixabay license).
