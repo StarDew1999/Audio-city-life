@@ -35,7 +35,7 @@ export class Live {
       try { return JSON.parse(typeof r.v === "string" ? r.v : new TextDecoder().decode(r.v)); } catch { return null; }
     };
     return {
-      async get(k, o = {}) { let r = self.row(k); if (!r && /^[kv]\//.test(k)) { await self.lazy(k); r = self.row(k); } return val(r, o.type); },
+      async get(k, o = {}) { let r = self.row(k); if (!r && /^[ksv]\//.test(k)) { await self.lazy(k); r = self.row(k); } return val(r, o.type); },
       async getWithMetadata(k, o = {}) { let r = self.row(k); if (!r && /^v\//.test(k)) { await self.lazy(k); r = self.row(k); } if (!r) return null; return { data: val(r, o.type), metadata: r.m ? JSON.parse(r.m) : {} }; },
       async set(k, bytes, o = {}) { self.putBin(k, bytes, o.metadata); },
       async setJSON(k, v, o = {}) { if (o.onlyIfNew && self.row(k)) return; self.putJSON(k, v, true); },
