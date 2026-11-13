@@ -284,7 +284,7 @@ export async function handle(req, store, opts = {}) {
     if (b.op === "profile") { const u = low(b.nm); const prof = u ? await store.get(`u/${u}`, { type: "json" }) : null; return json({ ok: !!prof, prof }); }
     if (b.op === "send") {
       const to = low(b.to); if (!to) return json({ error: "no recipient" }, 400);
-      const type = ["text", "call", "cl", "bizpay", "bizinvite", "pay", "gift", "meet", "visit", "dm"].includes(b.type) ? b.type : "text";
+      const type = ["text", "call", "cl", "bizpay", "bizinvite", "pay", "gift", "meet", "visit", "dm", "party", "ride", "rideok", "ridego", "rideno", "fare", "rel"].includes(b.type) ? b.type : "text";
       await store.setJSON(`i/${to}/${pad(now)}-${rid()}`, { from: clean(b.from, 40), type, msg: clean(b.msg, 5000), st: clean(b.st, 10), cid: clean(b.cid, 20) });
       const from = clean(b.from, 40);
       if (type === "text") await notify(store, to, { title: from, body: clean(b.msg, 120), tag: "t-" + low(from) }, "text");
@@ -294,6 +294,9 @@ export async function handle(req, store, opts = {}) {
       else if (type === "meet") await notify(store, to, { title: from + " wants to meet up", body: "Open Audio City Life to go meet them.", tag: "meet" }, "text");
       else if (type === "visit") await notify(store, to, { title: from + " rang your doorbell", body: "They stopped by your home in Audio City Life.", tag: "visit" }, "text");
       else if (type === "pay") await notify(store, to, { title: from + " sent you money", body: "$" + (parseFloat(b.msg) || 0) + " is waiting in your Audio City Life bank account.", tag: "pay" }, "text");
+      else if (type === "rel") { const k = String(b.msg || "").split("|")[0]; const T = { ask: "asked you out on a date!", propose: "proposed to you!", wed: "invited you to your wedding!", date: "took you on a date", kid: "adopted a child for your family", askyes: "said yes to dating you!", propyes: "said yes! You are engaged!", wedyes: "said I do! You are married!" }[k]; if (T) await notify(store, to, { title: from + " " + T, body: "Open Audio City Life to see it.", tag: "rel" }, "text"); }
+      else if (type === "party") await notify(store, to, { title: from + " invited you to a party", body: "Open Audio City Life to go.", tag: "meet" }, "text");
+      else if (type === "ride") await notify(store, to, { title: from + " offered you a ride", body: "Open Audio City Life to get in.", tag: "ride" }, "text");
       else if (type === "bizinvite") await notify(store, to, { title: from, body: "Offered you a job at their shop in Audio City Life", tag: "job" }, "job");
       return json({ ok: true, now });
     }
