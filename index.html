@@ -2774,7 +2774,7 @@ setInterval(()=>{if(S&&S.started)save()},30000);
 function tstr(t){try{return new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}catch(e){return''}}
 function convoItem(x){const li=el('li',x.me?{class:'me'}:{});const who=x.me?'You':(x.nm||'A player');
  if(x.vkey){const b=el('button',{type:'button','data-k':'cv:'+x.t+':'+who},`${who}, ${tstr(x.t)}: voice message${x.secs?', '+x.secs+(x.secs===1?' second':' seconds'):''}. Play it`);b.onclick=()=>{initAudio();playVoice(x.vkey)};li.append(b)}
- else li.textContent=`${who}, ${tstr(x.t)}: ${x.msg}`;return li}
+ else{li.textContent=`${who}, ${tstr(x.t)}: `;String(x.msg).split(/(https?:\/\/[^\s]+|[a-z0-9-]+(?:--[a-z0-9-]+)?\.(?:netlify\.app|github\.io|com|org|net)(?:\/[^\s]*)?)/i).forEach((part,i)=>{if(i%2){const href=/^https?:/i.test(part)?part:'https://'+part;const a=el('a',{href,target:'_blank',rel:'noopener'},part);li.append(a)}else if(part)li.append(document.createTextNode(part))})}return li}
 function convoList(items,empty,label,withName){H2(label);if(!items.length)box.append(el('p',{id:'convoEmpty'},empty));const ul=el('ul',{id:'convo',class:'convo','aria-label':label,'data-with':(withName||'').toLowerCase()});items.forEach(x=>ul.append(convoItem(x)));box.append(ul);return ul}
 function convoAppend(x,withName){const ul=document.getElementById('convo');if(!ul||ul.dataset.with!==(withName||'').toLowerCase())return;const e=document.getElementById('convoEmpty');if(e)e.remove();ul.append(convoItem(x));while(ul.children.length>40)ul.firstChild.remove()}
 function chatLogAdd(x){S.chatlog=S.chatlog||[];if(S.chatlog.some(y=>y.t===x.t&&y.nm===x.nm&&!!y.me===!!x.me))return;S.chatlog.push(x);S.chatlog.sort((a,b)=>a.t-b.t);S.chatlog=S.chatlog.slice(-40);convoAppend(x,'')}
@@ -3154,7 +3154,7 @@ QJ('nightcook',{n:'Cook at All Night Pancake House',at:'allnight',pay:16,titles:
 @keyframes fall{to{transform:translateY(190px)}}
 @media (prefers-reduced-motion:reduce){.scene *{animation:none!important}}
 .convo{list-style:none;padding:8px;margin:6px 0 10px;display:flex;flex-direction:column;gap:6px;background:#0b1222;border-radius:16px;border:1px solid #2d3f66;max-height:360px;overflow-y:auto}
-.convo li{white-space:pre-wrap;word-break:break-word;max-width:85%;padding:8px 12px;border-radius:16px;background:#2a3550;align-self:flex-start;font-size:.98rem}
+.convo a{color:#9fd0ff;text-decoration:underline}.convo li{white-space:pre-wrap;word-break:break-word;max-width:85%;padding:8px 12px;border-radius:16px;background:#2a3550;align-self:flex-start;font-size:.98rem}
 .convo li.me{align-self:flex-end;background:#1f6feb}
 .convo li button{min-height:44px;margin:2px 0;background:rgba(0,0,0,.2);border-color:rgba(255,255,255,.25)}
 .needs{display:flex;gap:8px;margin:2px 0 8px}
