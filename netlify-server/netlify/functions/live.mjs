@@ -95,6 +95,7 @@ export default async (req) => {
   try {
     if (b.op === "sync") {
       const id = clean(b.id, 40), nm = clean(b.nm, 40), at = clean(b.at, 40), me = low(nm);
+      if (nm && b.prof && typeof b.prof === "object") { try { const pf = JSON.parse(JSON.stringify(b.prof).slice(0, 4000)); await store.setJSON(`u/${me}`, { ...pf, t: now }); } catch {} }
       if (id && nm) await store.setJSON(`p/${id}`, { nm, at, t: now, vc: b.vc ? 1 : 0, hid: b.hid ? 1 : 0 });
       const since = Number(b.since) || now, isince = Number(b.isince) || now - 7 * 864e5;
       const [pl, ch, ib, sg] = await Promise.all([
@@ -195,13 +196,17 @@ export default async (req) => {
     }
     if (b.op === "pushprefs") { const u = low(b.nm); const cur = u && await store.get(`n/${u}`, { type: "json" }); if (cur) { cur.prefs = prefsOf(b.prefs); await store.setJSON(`n/${u}`, cur); } return json({ ok: !!cur }); }
     if (b.op === "pushoff") { const u = low(b.nm); if (u) await store.delete(`n/${u}`); return json({ ok: true }); }
+    if (b.op === "profile") { const u = low(b.nm); const prof = u ? await store.get(`u/${u}`, { type: "json" }) : null; return json({ ok: !!prof, prof }); }
     if (b.op === "send") {
       const to = low(b.to); if (!to) return json({ error: "no recipient" }, 400);
-      const type = ["text", "call", "cl", "bizpay", "bizinvite", "pay"].includes(b.type) ? b.type : "text";
+      const type = ["text", "call", "cl", "bizpay", "bizinvite", "pay", "gift", "meet", "visit"].includes(b.type) ? b.type : "text";
       await store.setJSON(`i/${to}/${pad(now)}-${rid()}`, { from: clean(b.from, 40), type, msg: clean(b.msg, 5000), st: clean(b.st, 10), cid: clean(b.cid, 20) });
       const from = clean(b.from, 40);
       if (type === "text") await notify(store, to, { title: from, body: clean(b.msg, 120), tag: "t-" + low(from) }, "text");
       else if (type === "call" && b.st === "ring") await notify(store, to, { title: from + " is calling you", body: "Open Audio City Life to answer.", tag: "call" }, "call");
+      else if (type === "gift") await notify(store, to, { title: from + " sent you a gift", body: "Open Audio City Life to see it.", tag: "gift" }, "text");
+      else if (type === "meet") await notify(store, to, { title: from + " wants to meet up", body: "Open Audio City Life to go meet them.", tag: "meet" }, "text");
+      else if (type === "visit") await notify(store, to, { title: from + " rang your doorbell", body: "They stopped by your home in Audio City Life.", tag: "visit" }, "text");
       else if (type === "pay") await notify(store, to, { title: from + " sent you money", body: "$" + (parseFloat(b.msg) || 0) + " is waiting in your Audio City Life bank account.", tag: "pay" }, "text");
       else if (type === "bizinvite") await notify(store, to, { title: from, body: "Offered you a job at their shop in Audio City Life", tag: "job" }, "job");
       return json({ ok: true, now });
