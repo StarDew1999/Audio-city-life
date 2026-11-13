@@ -125,6 +125,8 @@ export default async (req) => {
       const msg = clean(b.msg, 5000); if (!msg) return json({ error: "empty" }, 400);
       await store.setJSON(`c/${pad(now)}-${rid()}`, { nm: clean(b.nm, 40), at: clean(b.at, 40), msg, id: clean(b.id, 40) });
       await notifyChat(store, clean(b.nm, 40), msg.slice(0, 120));
+      const ments = [...new Set((msg.match(/@([A-Za-z0-9 _.-]{1,40}?)(?=[\s,.!?:;]|$)/g) || []).map((x) => low(x.slice(1))))].slice(0, 5);
+      for (const u of ments) if (u && u !== low(b.nm)) await notify(store, u, { title: clean(b.nm, 40) + " mentioned you", body: msg.slice(0, 120), tag: "mention" }, "chat");
       return json({ ok: true, now });
     }
     if (b.op === "voice") {
