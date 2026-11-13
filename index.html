@@ -1377,7 +1377,8 @@ async function bowl(){if(busy)return;if(!tryPay(14))return;busy=true;let total=0
  busy=false;S.energy=clamp(S.energy-5,0,100);save();await feedback('Game over',`You scored ${total} pins in 5 frames.`);placeScreen(S.loc)}
 /* ---- live players (works only for signed-in people the platform admits) ---- */
 const NETLIFY_HOME='https://audio-city-life.netlify.app',GITHUB_HOME='https://stardew1999.github.io/Audio-city-life/';
-const API=window.ACL_API||(/netlify\.app$|localhost|127\.0\.0\.1/.test(location.hostname)?'/api/live':NETLIFY_HOME+'/api/live');
+const CHAT_SERVER='https://chat--audio-city-life.netlify.app/api/live';
+const API=window.ACL_API||(/netlify\.app$|localhost|127\.0\.0\.1/.test(location.hostname)?'/api/live':CHAT_SERVER);
 let ROOM=null,PRES={};const lastSeen={},seenDM={},seenCall={};const clean=s=>String(s==null?'':s).replace(/[<>]/g,'').slice(0,200);
 const cleanMsg=s=>String(s==null?'':s).replace(/[<>]/g,'').slice(0,5000);
 const sameName=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
