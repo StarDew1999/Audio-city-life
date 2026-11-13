@@ -3377,7 +3377,7 @@ function notifTarget(tag){tag=String(tag||'');if(tag==='chat'||tag==='mention')r
 function openFromNotif(tag){const t=notifTarget(tag);if(!t||!S.started)return;if(document.querySelector('[data-k="tset"]')){PENDING_OPEN=tag;titleScreen();return}initAudio();t.f()}
 try{navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.open)openFromNotif(e.data.open)})}catch(e){}
 function titleScreen(){screen('Audio City Life',()=>{P('An audio city life game. Walk, drive, and ride the bus around town. Work jobs, shop the mall, eat at restaurants, dance at the nightclub, fish, hunt, buy cars and homes, adopt pets, and set up a smart home.','tt');
- P('Wear headphones for the best sound, and turn off silent mode so you can hear the game.');if(S.started&&S.seenVer!==VERSION)P(WHATSNEW);
+ P('Wear headphones for the best sound, and turn off silent mode so you can hear the game.');try{if(ON_CF&&localStorage.getItem('acl_movednote')){P('Welcome to the new home of Audio City Life! Your game came with you. Two quick things: add this page to your Home Screen again (in Safari, tap Share, then Add to Home Screen), and turn notifications back on in Settings. You can delete the old Audio City Life icon from your Home Screen.','movednote');B('Got it, hide this message',()=>{try{localStorage.removeItem('acl_movednote')}catch(e){}titleScreen()},{k:'movedok'})}}catch(e){}if(S.started&&S.seenVer!==VERSION)P(WHATSNEW);
  const nt=S.started&&S.name&&PENDING_OPEN?notifTarget(PENDING_OPEN):null;if(nt)B(`Open ${nt.l}, from your notification`,()=>{initAudio();PENDING_OPEN='';placeScreen(S.loc in PL?S.loc:'home');pushPresence();S.seenVer=VERSION;dailyReward();checkRent();nt.f()},{k:'notifgo'});
  B(S.started?`Continue your game${S.name?' as '+S.name:''}`:'Create your character and start a new life',()=>{initAudio();if(!S.started||!S.name)return charCreate(true);placeScreen(S.loc in PL?S.loc:'home');pushPresence();S.seenVer=VERSION;const dr=dailyReward()+checkRent();setTimeout(()=>say(`Welcome back, ${S.name}.`+dr),500)});
  B('Settings: sound, volume, voices, notifications, and more',()=>{initAudio();settingsScreen()},{k:'tset'});B('How-to guide',()=>{initAudio();guideScreen(null)},{k:'tguide'});B('Restore my game from an online backup',()=>{initAudio();restoreScreen()})},{noNav:true,noHud:true,focusK:S.started&&PENDING_OPEN&&notifTarget(PENDING_OPEN)?'notifgo':null,focus:'#tt'})}
@@ -3405,11 +3405,15 @@ async function charCreate(isNew){busy=true;S.look=S.look||{};
   F.items.forEach(([n,slot,c])=>{S.clothes.push({n,c,s:slot==='shoes'?'Size 7':'Medium',slot});S.wearing[slot]=S.clothes.length-1})}
  S.started=true;S.seenVer=VERSION;dailyReward();save();busy=false;pushPresence();sfx.levelup();
  await feedback('Your character',describeMe()+(isNew?' You rent a small studio with $300 cash and $2,500 in the bank. Use Go somewhere at the bottom of each screen to explore.':''),isNew?'Start playing':'Done');placeScreen(isNew?'home':S.loc)}
-const MOVE_TO_GITHUB=false;
+const MOVE_TO_GITHUB=false,MOVE_TO_CF=false;
 async function moveCheck(){
  if(MOVE_TO_GITHUB&&/netlify\.app$/.test(location.hostname)){let code='';try{const raw=localStorage.getItem(SAVE);if(raw){const r=await fetch('/api/live',{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify({op:'xfer',data:raw})});const d=await r.json();code=d.code||''}}catch(e){}
   document.body.innerHTML='<main id="main"><h1 tabindex="-1">Audio City Life has moved!</h1><p>Taking you to the new home of the game now. Your game comes with you.</p></main>';
   location.replace(GITHUB_HOME+(code?'#xfer='+code:''));return true}
+ if(MOVE_TO_CF&&CF_ORIGIN&&/netlify\.app$/.test(location.hostname)){let code='';try{const raw=localStorage.getItem(SAVE);if(raw){const r=await fetch(CF_ORIGIN+'/api/live',{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify({op:'xfer',data:raw})});const d=await r.json();code=d.code||''}}catch(e){}
+  document.body.innerHTML='<main id="main"><h1 tabindex="-1">Audio City Life has moved!</h1><p>Taking you to the new home of the game now. Your game, friends, and chat come with you.</p></main>';
+  location.replace(CF_ORIGIN+'/'+(code?'#xfer='+code:'#moved=1'));return true}
+ if(/moved=1|xfer=/.test(location.hash))try{localStorage.setItem('acl_movednote','1')}catch(e){}
  const m=location.hash.match(/xfer=([a-z0-9]+)/);if(m){try{const r=await fetch(API,{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify({op:'xget',code:m[1]})});const d=await r.json();
   if(d.data){const cur=localStorage.getItem(SAVE);let keep=false;try{if(cur){const a=JSON.parse(cur),b=JSON.parse(d.data);keep=a.started&&(a.savedAt||0)>(b.savedAt||0)}}catch(e){}if(!keep)localStorage.setItem(SAVE,d.data)}}catch(e){}history.replaceState(null,'',location.pathname)}
  return false}
