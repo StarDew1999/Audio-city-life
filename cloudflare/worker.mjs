@@ -1,4 +1,4 @@
-// Audio City Life on Cloudflare: serves the game for free and runs live chat in one Durable Object.
+// Roamerica on Cloudflare: serves the game for free and runs live chat in one Durable Object.
 // The chat logic is the same shared core the Netlify server uses (netlify-server/lib/core.mjs).
 // While some players are still on the old Netlify link, a bridge copies chat, messages, and who's online
 // between the two servers, so everyone can still talk to each other.
@@ -156,7 +156,7 @@ export class Live {
     const now = Date.now(); this.sql.exec("DELETE FROM rq WHERE u = ?", u);
     for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 12)) {
       const at = Number(it.at) || 0; if (at < now || at > now + 31 * 864e5) continue;
-      const msg = { title: String(it.title || "Audio City Life").slice(0, 60), body: String(it.body || "").replace(/[<>]/g, "").slice(0, 200), tag: String(it.tag || "r").slice(0, 20) };
+      const msg = { title: String(it.title || "Roamerica").slice(0, 60), body: String(it.body || "").replace(/[<>]/g, "").slice(0, 200), tag: String(it.tag || "r").slice(0, 20) };
       this.sql.exec("INSERT OR REPLACE INTO rq (u, tag, at, msg) VALUES (?, ?, ?, ?)", u, msg.tag, at, JSON.stringify(msg));
     }
     this.armReminders(); return json({ ok: true });

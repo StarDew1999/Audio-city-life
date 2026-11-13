@@ -1,4 +1,4 @@
-// Shared Audio City Life live server. Runs on Netlify (with Netlify Blobs) and on Cloudflare (Durable Object store).
+// Shared Roamerica live server. Runs on Netlify (with Netlify Blobs) and on Cloudflare (Durable Object store).
 // The store is anything with: get(key,{type}), getWithMetadata(key,{type}), set(key,bytes,{metadata}), setJSON(key,val,opts), list({prefix}), delete(key).
 const crypto = globalThis.crypto;
 const enc = new TextEncoder();
@@ -164,7 +164,7 @@ export async function handle(req, store, opts = {}) {
       if (e === null) return new Response("gone", { status: 404, headers: CORS });
       return new Response(e.data, { headers: { "content-type": (e.metadata && e.metadata.mime) || "audio/mp4", "cache-control": "public, max-age=604800", ...CORS } });
     }
-    return json({ ok: true, hello: "Audio City Life live service" });
+    return json({ ok: true, hello: "Roamerica live service" });
   }
   let b;
   try { b = await req.json(); } catch { return json({ error: "bad json" }, 400); }
@@ -218,7 +218,7 @@ export async function handle(req, store, opts = {}) {
       if (b.to) {
         const to = low(b.to);
         await store.setJSON(`i/${to}/${pad(now)}-${rid()}`, { from: clean(b.nm, 40), type: b.kind === "call" ? "cl" : "text", msg: "", vkey, secs });
-        if (b.kind !== "call") await notify(store, to, { title: clean(b.nm, 40), body: "Sent you a voice message in Audio City Life", tag: "t-" + low(b.nm) }, "text");
+        if (b.kind !== "call") await notify(store, to, { title: clean(b.nm, 40), body: "Sent you a voice message in Roamerica", tag: "t-" + low(b.nm) }, "text");
       } else {
         await store.setJSON(`c/${pad(now)}-${rid()}`, { nm: clean(b.nm, 40), at: clean(b.at, 40), msg: "", id: clean(b.id, 40), vkey, secs });
         await notifyChat(store, clean(b.nm, 40), "Sent a voice message");
@@ -288,16 +288,16 @@ export async function handle(req, store, opts = {}) {
       await store.setJSON(`i/${to}/${pad(now)}-${rid()}`, { from: clean(b.from, 40), type, msg: clean(b.msg, 5000), st: clean(b.st, 10), cid: clean(b.cid, 20) });
       const from = clean(b.from, 40);
       if (type === "text") await notify(store, to, { title: from, body: clean(b.msg, 120), tag: "t-" + low(from) }, "text");
-      else if (type === "call" && b.st === "ring") await notify(store, to, { title: from + " is calling you", body: "Open Audio City Life to answer.", tag: "call" }, "call");
+      else if (type === "call" && b.st === "ring") await notify(store, to, { title: from + " is calling you", body: "Open Roamerica to answer.", tag: "call" }, "call");
       else if (type === "dm") await notify(store, to, { title: "Private message from " + from, body: clean(b.msg, 120), tag: "dm-" + low(from) }, "text");
-      else if (type === "gift") await notify(store, to, { title: from + " sent you a gift", body: "Open Audio City Life to see it.", tag: "gift" }, "text");
-      else if (type === "meet") await notify(store, to, { title: from + " wants to meet up", body: "Open Audio City Life to go meet them.", tag: "meet" }, "text");
-      else if (type === "visit") await notify(store, to, { title: from + " rang your doorbell", body: "They stopped by your home in Audio City Life.", tag: "visit" }, "text");
-      else if (type === "pay") await notify(store, to, { title: from + " sent you money", body: "$" + (parseFloat(b.msg) || 0) + " is waiting in your Audio City Life bank account.", tag: "pay" }, "text");
-      else if (type === "rel") { const k = String(b.msg || "").split("|")[0]; const T = { ask: "asked you out on a date!", propose: "proposed to you!", wed: "invited you to your wedding!", date: "took you on a date", kid: "adopted a child for your family", askyes: "said yes to dating you!", propyes: "said yes! You are engaged!", wedyes: "said I do! You are married!" }[k]; if (T) await notify(store, to, { title: from + " " + T, body: "Open Audio City Life to see it.", tag: "rel" }, "text"); }
-      else if (type === "party") await notify(store, to, { title: from + " invited you to a party", body: "Open Audio City Life to go.", tag: "meet" }, "text");
-      else if (type === "ride") await notify(store, to, { title: from + " offered you a ride", body: "Open Audio City Life to get in.", tag: "ride" }, "text");
-      else if (type === "bizinvite") await notify(store, to, { title: from, body: "Offered you a job at their shop in Audio City Life", tag: "job" }, "job");
+      else if (type === "gift") await notify(store, to, { title: from + " sent you a gift", body: "Open Roamerica to see it.", tag: "gift" }, "text");
+      else if (type === "meet") await notify(store, to, { title: from + " wants to meet up", body: "Open Roamerica to go meet them.", tag: "meet" }, "text");
+      else if (type === "visit") await notify(store, to, { title: from + " rang your doorbell", body: "They stopped by your home in Roamerica.", tag: "visit" }, "text");
+      else if (type === "pay") await notify(store, to, { title: from + " sent you money", body: "$" + (parseFloat(b.msg) || 0) + " is waiting in your Roamerica bank account.", tag: "pay" }, "text");
+      else if (type === "rel") { const k = String(b.msg || "").split("|")[0]; const T = { ask: "asked you out on a date!", propose: "proposed to you!", wed: "invited you to your wedding!", date: "took you on a date", kid: "adopted a child for your family", askyes: "said yes to dating you!", propyes: "said yes! You are engaged!", wedyes: "said I do! You are married!" }[k]; if (T) await notify(store, to, { title: from + " " + T, body: "Open Roamerica to see it.", tag: "rel" }, "text"); }
+      else if (type === "party") await notify(store, to, { title: from + " invited you to a party", body: "Open Roamerica to go.", tag: "meet" }, "text");
+      else if (type === "ride") await notify(store, to, { title: from + " offered you a ride", body: "Open Roamerica to get in.", tag: "ride" }, "text");
+      else if (type === "bizinvite") await notify(store, to, { title: from, body: "Offered you a job at their shop in Roamerica", tag: "job" }, "job");
       return json({ ok: true, now });
     }
     if (b.op && b.op[0] === "_" ) {
