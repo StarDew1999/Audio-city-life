@@ -275,6 +275,12 @@ export async function handle(req, store, opts = {}) {
     }
     if (b.op === "pushprefs") { const u = low(b.nm); const cur = u && await store.get(`n/${u}`, { type: "json" }); if (cur) { cur.prefs = prefsOf(b.prefs); cur.t = now; await store.setJSON(`n/${u}`, cur); } return json({ ok: !!cur }); }
     if (b.op === "pushoff") { const u = low(b.nm); if (u) await store.delete(`n/${u}`); return json({ ok: true }); }
+    if (b.op === "homeowners") { // which players live in a home, by home key
+      const hk = clean(b.hk, 40); if (!hk) return json({ owners: [] });
+      const l = await store.list({ prefix: "u/" }); const owners = [];
+      for (const x of l.blobs.slice(0, 400)) { const v = await store.get(x.key, { type: "json" }); if (v && v.hk === hk && now - (v.t || 0) < 60 * 864e5) owners.push({ nm: clean(v.nm, 40), rent: !!v.rent }); if (owners.length >= 25) break; }
+      return json({ owners });
+    }
     if (b.op === "profile") { const u = low(b.nm); const prof = u ? await store.get(`u/${u}`, { type: "json" }) : null; return json({ ok: !!prof, prof }); }
     if (b.op === "send") {
       const to = low(b.to); if (!to) return json({ error: "no recipient" }, 400);
