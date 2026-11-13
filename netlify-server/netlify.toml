@@ -1,0 +1,18 @@
+# Audio City Life
+# The game itself lives on GitHub Pages (free, unlimited updates).
+# This Netlify site keeps the same web address and runs the chat server at /api/live.
+# Every other address is quietly fetched from GitHub Pages, so players never see a new link.
+
+[build]
+  publish = "public"
+  command = "echo ready"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/*"
+  to = "https://stardew1999.github.io/Audio-city-life/:splat"
+  status = 200
+  force = true

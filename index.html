@@ -246,8 +246,9 @@ function crickets(){every(600,1500,()=>{const p=rnd(-.8,.8);for(let i=0;i<4;i++)
 function dishClinks(){every(1500,4000,()=>tone(rnd(2500,4200),.2,{vol:.035,pan:rnd(-.7,.7),dest:AMB}))}
 /* ===== REAL RECORDED SOUNDS (CC0 / Pixabay license, from the Moodist project; menu sounds by Kenney, CC0) ===== */
 const RB={},RP={};
+const SOUND_BASE=/netlify\.app$/.test(location.hostname)?'https://stardew1999.github.io/Audio-city-life/sounds/':'sounds/';
 function loadReal(n){if(RB[n])return Promise.resolve(RB[n]);if(RP[n])return RP[n];
- RP[n]=fetch('sounds/'+(n.includes('.')?n:n+'.mp3')).then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()}).then(b=>new Promise((ok,no)=>AC.decodeAudioData(b,ok,no))).then(buf=>{RB[n]=buf;return buf}).catch(()=>{delete RP[n];return null});return RP[n]}
+ RP[n]=fetch(SOUND_BASE+(n.includes('.')?n:n+'.mp3')).then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()}).then(b=>new Promise((ok,no)=>AC.decodeAudioData(b,ok,no))).then(buf=>{RB[n]=buf;return buf}).catch(()=>{delete RP[n];return null});return RP[n]}
 function realLoop(n,vol,dest){let stopped=false,s=null,g=null;
  const stop=()=>{stopped=true;try{if(g){const t=T();g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+.6)}if(s)s.stop(T()+.7)}catch(e){}};
  ambStops.push(stop);
@@ -3208,7 +3209,7 @@ async function charCreate(isNew){busy=true;S.look=S.look||{};
   F.items.forEach(([n,slot,c])=>{S.clothes.push({n,c,s:slot==='shoes'?'Size 7':'Medium',slot});S.wearing[slot]=S.clothes.length-1})}
  S.started=true;S.seenVer=VERSION;dailyReward();save();busy=false;pushPresence();sfx.levelup();
  await feedback('Your character',describeMe()+(isNew?' You rent a small studio with $300 cash and $2,500 in the bank. Use Go somewhere at the bottom of each screen to explore.':''),isNew?'Start playing':'Done');placeScreen(isNew?'home':S.loc)}
-const MOVE_TO_GITHUB=true;
+const MOVE_TO_GITHUB=false;
 async function moveCheck(){
  if(MOVE_TO_GITHUB&&/netlify\.app$/.test(location.hostname)){let code='';try{const raw=localStorage.getItem(SAVE);if(raw){const r=await fetch('/api/live',{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify({op:'xfer',data:raw})});const d=await r.json();code=d.code||''}}catch(e){}
   document.body.innerHTML='<main id="main"><h1 tabindex="-1">Audio City Life has moved!</h1><p>Taking you to the new home of the game now. Your game comes with you.</p></main>';
