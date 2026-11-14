@@ -164,7 +164,7 @@ export class Live {
   armReminders() { const r = this.sql.exec("SELECT MIN(at) AS a FROM rq").one(); if (r && r.a) this.soon(Math.max(1000, r.a - Date.now())); }
   dueReminders(now) {
     const due = this.sql.exec("SELECT u, tag, msg FROM rq WHERE at <= ? LIMIT 20", now).toArray();
-    for (const d of due) { this.sql.exec("DELETE FROM rq WHERE u = ? AND tag = ?", d.u, d.tag); try { this.push(d.u, JSON.parse(d.msg), d.tag === "trip" || d.tag === "food" ? "text" : "pet"); } catch {} }
+    for (const d of due) { this.sql.exec("DELETE FROM rq WHERE u = ? AND tag = ?", d.u, d.tag); try { this.push(d.u, JSON.parse(d.msg), d.tag === "trip" || d.tag === "food" || d.tag === "baby" ? "text" : "pet"); } catch {} }
   }
 
   async run(bodyText) {
