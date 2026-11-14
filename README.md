@@ -23,5 +23,5 @@ Sounds load from jsDelivr (cdn.jsdelivr.net/gh/StarDew1999/Audio-city-life@main/
 ## Cloudflare (free live chat)
 - `wrangler.jsonc` + `cloudflare/worker.mjs` run the game and live chat on Cloudflare Workers (free plan). Chat uses one Durable Object with a live WebSocket link; the game falls back to normal requests if the link drops.
 - The chat logic is shared with Netlify in `netlify-server/lib/core.mjs`.
-- While players are on both servers, a bridge copies chat lines, private messages, voice messages, who's online, saves, profiles, shops and notification sign-ups between Netlify and Cloudflare every 20 seconds. The bridge key is stored privately (Netlify env var BRIDGE_KEY and the Cloudflare D1 database acl-config), never in this repo.
+- The Netlify bridge was turned off in November 2026 (all players are on the Cloudflare link). It is switched off with "off": 1 in the bridge row of the D1 cfg table. When it was on, a bridge copied chat lines, private messages, voice messages, who's online, saves, profiles, shops and notification sign-ups between Netlify and Cloudflare every 20 seconds. The bridge key is stored privately (Netlify env var BRIDGE_KEY and the Cloudflare D1 database acl-config), never in this repo.
 - Cloudflare deploys automatically from this GitHub repo on every push to main (Workers Builds).
