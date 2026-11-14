@@ -101,6 +101,11 @@ async function notifyChat(store, fromName, body) {
 }
 
 
+
+// ---- Safety reports: players can report someone; the game owner can read them any time (no alerts, no automatic bans) ----
+const ADMINS = ["Jessica Allred Developer"];
+const isAdmin = (u) => ADMINS.map(low).includes(low(u));
+async function adminOK(store, b) { const u = low(b.u); if (!isAdmin(u)) return false; const cur = await store.get(`s/${u}`, { type: "json" }); return !!(cur && cur.h && cur.h === String(b.h || "")); }
 // ---- Bridge between the Netlify server and the Cloudflare server, so players on both chat together ----
 const tOfKey = (k) => (k.startsWith("c/") ? Number(k.slice(2, 16)) : k.startsWith("i/") ? Number(k.split("/")[2].slice(0, 14)) : 0);
 async function voiceOf(store, vkey) {
@@ -284,6 +289,21 @@ export async function handle(req, store, opts = {}) {
       return json({ owners });
     }
     if (b.op === "profile") { const u = low(b.nm); const prof = u ? await store.get(`u/${u}`, { type: "json" }) : null; return json({ ok: !!prof, prof }); }
+    if (b.op === "report") {
+      const nm = clean(b.nm, 40), about = clean(b.about, 40); if (!nm || !about) return json({ error: "bad" }, 400);
+      await store.setJSON(`r/${pad(now)}-${rid()}`, { from: nm, about, why: clean(b.why, 80), msg: clean(b.msg, 500), kind: clean(b.kind, 40) });
+      return json({ ok: true });
+    }
+    if (b.op === "admin") {
+      if (!(await adminOK(store, b))) return json({ ok: false, error: "no" });
+      if (b.do === "list") {
+        const rl = await store.list({ prefix: "r/" }); const keys = rl.blobs.map((x) => x.key).sort().slice(-60);
+        const reports = (await Promise.all(keys.map((k) => store.get(k, { type: "json" }).then((v) => (v ? { k, t: Number(k.slice(2, 16)), ...v } : null))))).filter(Boolean).reverse();
+        return json({ ok: true, reports, muted: [], now });
+      }
+      if (b.do === "del" && /^r\/[0-9]{14}-[a-z0-9]{1,8}$/.test(String(b.k))) { await store.delete(String(b.k)); return json({ ok: true }); }
+      return json({ ok: false, error: "unknown" });
+    }
     if (b.op === "send") {
       const to = low(b.to); if (!to) return json({ error: "no recipient" }, 400);
       const type = ["text", "call", "cl", "bizpay", "bizinvite", "pay", "gift", "meet", "visit", "dm", "party", "ride", "rideok", "ridego", "rideno", "fare", "rel", "medit", "mdel"].includes(b.type) ? b.type : "text";
