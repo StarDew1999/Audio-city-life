@@ -279,6 +279,11 @@ export async function handle(req, store, opts = {}) {
       const v = await store.get(`rc/${c}`, { type: "json" }); if (!v || now - v.t > 14 * 864e5) return json({ ok: false });
       await store.delete(`rc/${c}`); return json({ ok: true, data: v.data });
     }
+    if (b.op === "rpcheck") { // the owner sent this player's game back: hand it over once
+      const u = low(b.u); if (!u) return json({ ok: false });
+      const v = await store.get(`rp/${u}`, { type: "json" }); if (!v || now - v.t > 14 * 864e5) return json({ ok: false });
+      await store.delete(`rp/${u}`); return json({ ok: true, data: v.data });
+    }
     if (b.op === "cload") {
       const u = low(b.u), h = String(b.h || "");
       const cur = await store.get(`s/${u}`, { type: "json" });
@@ -337,6 +342,7 @@ export async function handle(req, store, opts = {}) {
       if (!(await adminOK(store, b))) return json({ ok: false, error: "no" });
       if (b.do === "stats") return json(await ownerStats(store, b, now, opts));
       if (b.do === "saves") { const out = []; for (const x of (await store.list({ prefix: "as/" })).blobs) { const v = await store.get(x.key, { type: "json" }); if (v) out.push({ u: x.key.slice(3), nm: v.nm, t: v.t, size: (v.data || "").length }); } out.sort((a, c) => c.t - a.t); return json({ ok: true, saves: out.slice(0, 300) }); }
+      if (b.do === "rpush") { const v = await store.get(`as/${low(b.who)}`, { type: "json" }); if (!v) return json({ ok: false, error: "none" }); await store.setJSON(`rp/${low(b.who)}`, { t: now, data: v.data }); return json({ ok: true, nm: v.nm, t: v.t }); }
       if (b.do === "rcode") { const v = await store.get(`as/${low(b.who)}`, { type: "json" }); if (!v) return json({ ok: false, error: "none" }); const code = Math.random().toString(36).slice(2, 8).toUpperCase(); await store.setJSON(`rc/${code}`, { t: now, data: v.data, nm: v.nm }); return json({ ok: true, code, nm: v.nm, t: v.t }); }
       if (b.do === "list") {
         const rl = await store.list({ prefix: "r/" }); const keys = rl.blobs.map((x) => x.key).sort().slice(-60);
