@@ -3,6 +3,7 @@
 set -e
 rm -rf dist && mkdir -p dist
 cp index.html sw.js manifest.json icon-192.png icon-512.png dist/
+cp -r geo dist/
 cat > dist/_headers <<'H'
 /
   Cache-Control: no-cache
