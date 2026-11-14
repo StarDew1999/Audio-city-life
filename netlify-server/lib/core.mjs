@@ -203,7 +203,9 @@ export async function handle(req, store, opts = {}) {
     }
     if (b.op === "chat") {
       const msg = clean(b.msg, 5000); if (!msg) return json({ error: "empty" }, 400);
-      await store.setJSON(`c/${pad(now)}-${rid()}`, { nm: clean(b.nm, 40), at: clean(b.at, 40), msg, id: clean(b.id, 40) });
+      const ctl = b.ctl === "edit" || b.ctl === "del" ? b.ctl : undefined, mid = clean(b.mid, 24) || undefined;
+      await store.setJSON(`c/${pad(now)}-${rid()}`, { nm: clean(b.nm, 40), at: clean(b.at, 40), msg, id: clean(b.id, 40), mid, ctl });
+      if (ctl) return json({ ok: true, now });
       await notifyChat(store, clean(b.nm, 40), msg.slice(0, 120));
       const ments = [...new Set((msg.match(/@([A-Za-z0-9 _.-]{1,40}?)(?=[\s,.!?:;]|$)/g) || []).map((x) => low(x.slice(1))))].slice(0, 5);
       for (const u of ments) if (u && u !== low(b.nm)) await notify(store, u, { title: clean(b.nm, 40) + " mentioned you", body: msg.slice(0, 120), tag: "mention" }, "chat");
@@ -284,8 +286,8 @@ export async function handle(req, store, opts = {}) {
     if (b.op === "profile") { const u = low(b.nm); const prof = u ? await store.get(`u/${u}`, { type: "json" }) : null; return json({ ok: !!prof, prof }); }
     if (b.op === "send") {
       const to = low(b.to); if (!to) return json({ error: "no recipient" }, 400);
-      const type = ["text", "call", "cl", "bizpay", "bizinvite", "pay", "gift", "meet", "visit", "dm", "party", "ride", "rideok", "ridego", "rideno", "fare", "rel"].includes(b.type) ? b.type : "text";
-      await store.setJSON(`i/${to}/${pad(now)}-${rid()}`, { from: clean(b.from, 40), type, msg: clean(b.msg, 5000), st: clean(b.st, 10), cid: clean(b.cid, 20) });
+      const type = ["text", "call", "cl", "bizpay", "bizinvite", "pay", "gift", "meet", "visit", "dm", "party", "ride", "rideok", "ridego", "rideno", "fare", "rel", "medit", "mdel"].includes(b.type) ? b.type : "text";
+      await store.setJSON(`i/${to}/${pad(now)}-${rid()}`, { from: clean(b.from, 40), type, msg: clean(b.msg, 5000), st: clean(b.st, 10), cid: clean(b.cid, 20), mid: clean(b.mid, 24) || undefined });
       const from = clean(b.from, 40);
       if (type === "text") await notify(store, to, { title: from, body: clean(b.msg, 120), tag: "t-" + low(from) }, "text");
       else if (type === "call" && b.st === "ring") await notify(store, to, { title: from + " is calling you", body: "Open Roamerica to answer.", tag: "call" }, "call");
