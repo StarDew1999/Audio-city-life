@@ -16,11 +16,29 @@ export class Live {
     this.sql.exec("CREATE TABLE IF NOT EXISTS cfg (k TEXT PRIMARY KEY, v TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS seen (k TEXT PRIMARY KEY, t INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS rq (u TEXT, tag TEXT, at INTEGER, msg TEXT, PRIMARY KEY (u, tag))");
-    this.miss = new Map(); this.lastReq = 0; this.bridgeCfg = undefined;
+    this.miss = new Map(); this.lastReq = 0; this.bridgeCfg = undefined; this.use = null; this.useT = 0;
     this.store = this.makeStore();
     this.push = (to, msg, kind, sub) => { this.sql.exec("INSERT INTO pq (j) VALUES (?)", JSON.stringify({ to, msg, kind, sub: sub || null })); this.soon(300); };
   }
   row(k) { return this.sql.exec("SELECT v, m, t FROM kv WHERE k = ?", k).toArray()[0]; }
+  // ---- rough count of today's free-plan requests (Cloudflare resets them at midnight UTC), for the owner's stats screen ----
+  useAdd(kind) {
+    try {
+      const now = Date.now(), d = new Date(now).toISOString().slice(0, 10);
+      if (!this.use || this.use.d !== d) { let o = null; try { o = JSON.parse(this.cfgGet("use:" + d) || "null"); } catch {} this.use = Object.assign({ d, h: 0, w: 0, a: 0 }, o || {}, { d }); }
+      this.use[kind]++;
+      if (now - this.useT > 30000) { this.useT = now; this.cfgSet("use:" + d, JSON.stringify(this.use)); }
+    } catch {}
+  }
+  usageInfo() {
+    if (this.use) { this.useT = Date.now(); this.cfgSet("use:" + this.use.d, JSON.stringify(this.use)); }
+    const old = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10), days = [];
+    for (const r of this.sql.exec("SELECT k, v FROM cfg WHERE k LIKE 'use:%' ORDER BY k DESC").toArray()) {
+      const d = r.k.slice(4); if (d < old) { this.sql.exec("DELETE FROM cfg WHERE k = ?", r.k); continue; }
+      try { const o = JSON.parse(r.v); days.push({ d, n: Math.round((o.h || 0) + (o.a || 0) + (o.w || 0) / 20), h: o.h || 0, w: o.w || 0, a: o.a || 0 }); } catch {}
+    }
+    return { limit: 100000, days: days.slice(0, 14) };
+  }
   cfgGet(k) { const r = this.sql.exec("SELECT v FROM cfg WHERE k = ?", k).toArray()[0]; return r ? r.v : null; }
   cfgSet(k, v) { this.sql.exec("INSERT OR REPLACE INTO cfg (k, v) VALUES (?, ?)", k, String(v)); }
   putJSON(k, val, track) {
@@ -127,6 +145,7 @@ export class Live {
   // ---- timers: send notifications a few at a time, and run the bridge while players are on ----
   soon(ms) { this.ctx.storage.getAlarm().then((a) => { const at = Date.now() + ms; if (!a || a > at) this.ctx.storage.setAlarm(at); }).catch(() => {}); }
   async alarm() {
+    this.useAdd("a");
     const now = Date.now();
     try { this.dueReminders(now); } catch {}
     const jobs = this.sql.exec("SELECT id, j FROM pq ORDER BY id LIMIT 8").toArray();
@@ -170,11 +189,12 @@ export class Live {
   async run(bodyText) {
     let op = ""; try { op = JSON.parse(bodyText).op || ""; } catch {}
     if (op === "remind") { try { return this.remind(JSON.parse(bodyText)); } catch { return json({ error: "bad" }, 400); } }
-    const res = await handle(new Request("https://live/api/live", { method: "POST", body: bodyText }), this.store, { push: this.push });
+    const res = await handle(new Request("https://live/api/live", { method: "POST", body: bodyText }), this.store, { push: this.push, usage: () => this.usageInfo() });
     if (POKE_OPS.has(op) && res.status === 200) this.poke();
     return res;
   }
   async fetch(req) {
+    this.useAdd("h");
     this.touch();
     const u = new URL(req.url);
     if (u.pathname === "/api/ws") {
@@ -188,6 +208,7 @@ export class Live {
     return this.run(await req.text());
   }
   async webSocketMessage(ws, data) {
+    this.useAdd("w");
     this.touch();
     let m; try { m = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data)); } catch { return; }
     if (m.ping) { ws.send('{"pong":1}'); return; }

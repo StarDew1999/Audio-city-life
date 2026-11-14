@@ -117,7 +117,7 @@ async function trackSeen(store, me, nm, now) {
   }
   await store.setJSON(k, { nm, h: [...((cur && cur.h) || []), hr].slice(-24) });
 }
-async function ownerStats(store, b, now) {
+async function ownerStats(store, b, now, opts = {}) {
   const days = Math.max(1, Math.min(Number(b.days) || 31, 90)), from = dayKey(now - days * 864e5), old = dayKey(now - 120 * 864e5);
   const act = [];
   for (const x of (await store.list({ prefix: "a/" })).blobs) {
@@ -131,7 +131,8 @@ async function ownerStats(store, b, now) {
   const total = (await store.list({ prefix: "u/" })).blobs.length;
   const online = [];
   for (const x of (await store.list({ prefix: "p/" })).blobs) { const v = await store.get(x.key, { type: "json" }); if (v && v.nm && now - v.t < 45000 && !online.includes(v.nm)) online.push(v.nm); }
-  return { ok: true, now, total: Math.max(total, joins.length), joins, act, online };
+  let usage = null; try { usage = opts.usage ? opts.usage() : null; } catch {}
+  return { ok: true, now, total: Math.max(total, joins.length), joins, act, online, usage };
 }
 async function adminOK(store, b) { const u = low(b.u); if (!isAdmin(u)) return false; const cur = await store.get(`s/${u}`, { type: "json" }); return !!(cur && cur.h && cur.h === String(b.h || "")); }
 // ---- Bridge between the Netlify server and the Cloudflare server, so players on both chat together ----
@@ -325,7 +326,7 @@ export async function handle(req, store, opts = {}) {
     }
     if (b.op === "admin") {
       if (!(await adminOK(store, b))) return json({ ok: false, error: "no" });
-      if (b.do === "stats") return json(await ownerStats(store, b, now));
+      if (b.do === "stats") return json(await ownerStats(store, b, now, opts));
       if (b.do === "list") {
         const rl = await store.list({ prefix: "r/" }); const keys = rl.blobs.map((x) => x.key).sort().slice(-60);
         const reports = (await Promise.all(keys.map((k) => store.get(k, { type: "json" }).then((v) => (v ? { k, t: Number(k.slice(2, 16)), ...v } : null))))).filter(Boolean).reverse();
