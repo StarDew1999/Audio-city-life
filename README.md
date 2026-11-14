@@ -18,6 +18,7 @@ Sounds load from jsDelivr (cdn.jsdelivr.net/gh/StarDew1999/Audio-city-life@main/
 - Update the in-game How-to guide (guideScreen) with every change, big or small, including steps for how to use each new thing. New guide sections go at the end, just before What's new (add them to the NEW list too).
 - Rewrite the WHATSNEW message in index.html with every update so it is always current: newest changes first, and drop items older than the last few updates (the How-to guide keeps the details). Players hear it on the start screen once after each update, and any time with the What's new button.
 - Bump VERSION in index.html with every update, so What's new plays again for everyone.
+- Keep the Credits and brand names page (creditsScreen in index.html) up to date: whenever an update adds real brand names, places, nature places, government or legal things, currencies, data sources, or sounds, add them to the credits and say they are only for gameplay.
 - Test before uploading. Only real recorded sounds (CC0 or Pixabay license).
 
 ## Cloudflare (free live chat)
