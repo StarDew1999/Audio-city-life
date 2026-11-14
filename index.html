@@ -6012,9 +6012,9 @@ async function openGeoCity(cc,country,st,name,lat,lon,pop){let tz='',useLat=lat,
  const stl=cc==='US'?st:(st===country?country:[st,country].join(', '));openTown({key:'d_'+slug(name+stl),n:name,st:stl,cc,lat:useLat,lon:useLon,tz:tz||TZ,pop:pop||0})}
 function cityBtn(cc,country,c,st,noSt){const [nm,lat,lon,pop]=c;B(`${nm}${st&&st!==country&&!noSt?', '+st:''}${pop?`, about ${pop.toLocaleString('en-US')} people`:''}, about ${milesTo(PL[S.loc].town,lat,lon).toLocaleString('en-US')} miles away`,()=>{say('Getting there.');openGeoCity(cc,country,st,nm,lat,lon,pop)},{k:'gc:'+cc+nm+st})}
 async function countryScreen(cc){let D;try{D=await geoFile(cc+'.json')}catch(e){sfx.error();say('Could not load that country right now. Check your internet and try again.');return}
- cur=()=>countryScreen(cc);screen(`Places in ${D.n}`,()=>{P(`Pick a big city in ${D.n}, or pick a ${cc==='US'?'state':'state, province, or region'} to hear the real cities there.`,'cs1');
+ cur=()=>countryScreen(cc);screen(`Places in ${D.n}`,()=>{P(`Pick a big city in ${D.n}, or pick a ${cc==='US'?'state':'state, province, or region'} to hear every real city and town there. ${cc==='US'?'States':'They'} are listed A to Z under the heading ${cc==='US'?'States':'States, provinces, and regions'}.`,'cs1');
   H2('Biggest cities');D.top.forEach(c=>cityBtn(cc,D.n,[c[0],c[2],c[3],c[4]],c[1]));
-  if(D.s.length>1){H2(cc==='US'?'States':'States, provinces, and regions');D.s.forEach(([st])=>B(st,()=>regionScreen(cc,st),{k:'rg:'+st}))}
+  if(D.s.length>1){H2(cc==='US'?'States':'States, provinces, and regions');D.s.slice().sort((x,y)=>x[0].localeCompare(y[0])).forEach(([st,top,n])=>B(`${st}${n?`, ${n} cities and towns`:''}`,()=>regionScreen(cc,st),{k:'rg:'+st}))}
   B('Search again',findTownScreen,{k:'sagain'})},{focus:'#cs1'})}
 async function regionScreen(cc,st){let D;try{D=await geoFile(cc+'.json')}catch(e){sfx.error();say('Could not load that place right now.');return}const R=D.s.find(x=>x[0]===st);if(!R){countryScreen(cc);return}
  cur=()=>regionScreen(cc,st);screen(`Cities in ${st}${st!==D.n?', '+D.n:''}`,()=>{P(`Here are the biggest real cities and towns in ${st}. Don't see your town? Choose Search again and type its name.`,'rs1');
