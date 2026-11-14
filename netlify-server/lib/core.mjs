@@ -270,6 +270,15 @@ export async function handle(req, store, opts = {}) {
       await store.setJSON(`s/${u}`, { h, data, t: now });
       return json({ ok: true, t: now });
     }
+    if (b.op === "asave") { // automatic backup of every player's game, only the game owner can read it
+      const u = low(b.u), d = String(b.data || ""); if (!u || d.length > 900000) return json({ ok: false });
+      await store.setJSON(`as/${u}`, { nm: clean(b.u, 40), t: now, data: d }); return json({ ok: true });
+    }
+    if (b.op === "rcload") { // a one-time restore code the owner gave a player
+      const c = String(b.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10); if (!c) return json({ ok: false });
+      const v = await store.get(`rc/${c}`, { type: "json" }); if (!v || now - v.t > 14 * 864e5) return json({ ok: false });
+      await store.delete(`rc/${c}`); return json({ ok: true, data: v.data });
+    }
     if (b.op === "cload") {
       const u = low(b.u), h = String(b.h || "");
       const cur = await store.get(`s/${u}`, { type: "json" });
@@ -327,6 +336,8 @@ export async function handle(req, store, opts = {}) {
     if (b.op === "admin") {
       if (!(await adminOK(store, b))) return json({ ok: false, error: "no" });
       if (b.do === "stats") return json(await ownerStats(store, b, now, opts));
+      if (b.do === "saves") { const out = []; for (const x of (await store.list({ prefix: "as/" })).blobs) { const v = await store.get(x.key, { type: "json" }); if (v) out.push({ u: x.key.slice(3), nm: v.nm, t: v.t, size: (v.data || "").length }); } out.sort((a, c) => c.t - a.t); return json({ ok: true, saves: out.slice(0, 300) }); }
+      if (b.do === "rcode") { const v = await store.get(`as/${low(b.who)}`, { type: "json" }); if (!v) return json({ ok: false, error: "none" }); const code = Math.random().toString(36).slice(2, 8).toUpperCase(); await store.setJSON(`rc/${code}`, { t: now, data: v.data, nm: v.nm }); return json({ ok: true, code, nm: v.nm, t: v.t }); }
       if (b.do === "list") {
         const rl = await store.list({ prefix: "r/" }); const keys = rl.blobs.map((x) => x.key).sort().slice(-60);
         const reports = (await Promise.all(keys.map((k) => store.get(k, { type: "json" }).then((v) => (v ? { k, t: Number(k.slice(2, 16)), ...v } : null))))).filter(Boolean).reverse();
