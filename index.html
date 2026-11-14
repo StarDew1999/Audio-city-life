@@ -5079,8 +5079,25 @@ function safetySettings(){H2('Safety');P('The safety filter hides messages from 
  B(`Safety filter: ${safeOn()?'on. Hiding inappropriate messages':'off. Showing every message'}`,()=>{S.settings.safeFilter=!safeOn();save();sfx.ok();say(safeOn()?'Safety filter on. Inappropriate messages from other players will be hidden.':'Safety filter off. You will see every message.');refresh()},{k:'safefilter'});
  B(`Bleep out swear words in other players' messages: ${cleanLangOn()?'on':'off'}`,()=>{S.settings.cleanLang=!cleanLangOn();save();sfx.ok();say(cleanLangOn()?'Swear words will be bleeped.':'Swear words will be shown.');refresh()},{k:'cleanlang'});
  const bl=S.blocked||[];if(bl.length){P(`Blocked players: ${bl.length}. Choose one to unblock.`);bl.forEach(n=>B(`Unblock ${n}`,()=>{S.blocked=S.blocked.filter(x=>!sameName(x,n));save();sfx.ok();say(`${n} is unblocked.`);refresh()},{k:'unbl:'+n}))}
- if(isOwner())B('Reports from players, game owner only',ownerScreen,{k:'owner'})}
+ if(isOwner()){B('Player stats, game owner only',statsScreen,{k:'ownstats'});B('Reports from players, game owner only',ownerScreen,{k:'owner'})}}
 async function ownerCall(o){if(!(S.cloud&&S.cloud.h)){sfx.error();say('First turn on Back up my game online in Settings, with your PIN. That is how the game knows it is really you.');return null}try{const r=await liveCall(Object.assign({op:'admin',u:S.name,h:S.cloud.h},o));if(!r||!r.ok){sfx.error();say(r&&r.error==='no'?'The server did not accept you as the game owner. Make sure your online backup is on with your PIN.':'That did not work. Check your internet.');return null}return r}catch(e){sfx.error();say('That did not work. Check your internet.');return null}}
+async function statsScreen(){say('Loading player stats.');const r=await ownerCall({do:'stats',days:31});if(!r)return;cur=statsScreen;
+ const now=new Date(r.now),dk=d=>d.toDateString(),today=dk(now),hrTime=h=>new Date(h*36e5).toLocaleTimeString([],{hour:'numeric'}),dayName=d=>d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'}),at=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}),pl=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+ const hours={};r.act.forEach(a=>{const k=String(a.n).toLowerCase();(hours[k]=hours[k]||{n:a.n,h:new Set()});a.h.forEach(h=>hours[k].h.add(h))});const people=Object.values(hours);
+ const onDay=d=>people.filter(p=>[...p.h].some(h=>dk(new Date(h*36e5))===d)).length;
+ const joined=r.joins.filter(j=>j.t>0).sort((a,b)=>b.t-a.t),joinedOn=d=>joined.filter(j=>dk(new Date(j.t))===d);
+ const weekAgo=r.now-7*864e5,newWeek=joined.filter(j=>j.t>=weekAgo).length,todayNew=joinedOn(today),onToday=onDay(today);
+ const startH=Math.floor(new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime()/36e5),nowH=Math.floor(r.now/36e5);
+ const byHour=[];for(let h=startH;h<=nowH;h++)byHour.push([h,people.filter(p=>p.h.has(h)).length]);const busy=byHour.reduce((a,b)=>b[1]>a[1]?b:a,[0,0]);
+ screen('Player stats',()=>{
+  P(`Right now: ${pl(r.online.length,'player')} online. Today: ${pl(onToday,'player')} played, and ${todayNew.length} new. This week: ${newWeek} new. All time: ${pl(r.total,'player')}.${busy[1]?` Busiest hour today: ${hrTime(busy[0])}, with ${pl(busy[1],'player')}.`:''}`,'stsum');
+  H2('Online right now');P(r.online.length?r.online.join(', ')+'.':'No one is online right now.');
+  H2('New players today');P(todayNew.length?todayNew.map(j=>`${j.n} at ${at(j.t)}`).join('. ')+'.':'No new players yet today.');
+  H2('Today, hour by hour');byHour.slice().reverse().forEach(([h,n])=>P(`${hrTime(h)}: ${pl(n,'player')}.`));
+  H2('Last 14 days');for(let i=0;i<14;i++){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);P(`${i===0?'Today, ':i===1?'Yesterday, ':''}${dayName(d)}: ${pl(onDay(dk(d)),'player')} played, ${joinedOn(dk(d)).length} new.`)}
+  H2('Everyone who joined, newest first');P(joined.length?joined.slice(0,100).map(j=>`${j.n}, ${dayName(new Date(j.t))} at ${at(j.t)}`).join('. ')+'.':'No one has joined since stats started.');
+  const before=r.joins.filter(j=>!j.t).length;P(`Stats started on November 14, 2026. Players who joined before then are counted in the all-time total, but their join dates are not known.${before?` ${pl(before,'player')} like that ${before===1?'has':'have'} played since then.`:''} Times are in your own time zone.`);
+  B('Refresh',statsScreen,{k:'stref'});B('Back to settings',settingsScreen,{k:'stback'})},{focus:'#stsum'})}
 async function ownerScreen(){say('Loading reports.');const r=await ownerCall({do:'list'});if(!r)return;cur=ownerScreen;
  screen('Reports from players',()=>{P(r.reports.length?`${r.reports.length} reports, newest first. You never have to check these. They are here if you want them.`:'No reports right now.','own');
   r.reports.forEach(x=>B(`${x.from} reported ${x.about}: ${x.why}. ${new Date(x.t).toLocaleDateString()}`,()=>screen('Report',()=>{P(`${x.from} reported ${x.about}. Reason: ${x.why}.${x.kind?' Where: '+x.kind+'.':''} ${x.msg?'The message: '+x.msg:''}`,'orp');B('Delete this report',async()=>{if(await ownerCall({do:'del',k:x.k})){sfx.ok();say('Report deleted.');ownerScreen()}},{k:'ord'});B('Back to reports',ownerScreen,{k:'orb'})},{focus:'#orp'}),{k:'rep:'+x.k}));

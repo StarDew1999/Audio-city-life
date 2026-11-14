@@ -105,6 +105,34 @@ async function notifyChat(store, fromName, body) {
 // ---- Safety reports: players can report someone; the game owner can read them any time (no alerts, no automatic bans) ----
 const ADMINS = ["Jessica Allred Developer"];
 const isAdmin = (u) => ADMINS.map(low).includes(low(u));
+// ---- player stats for the game owner: who joined when (j/name), and which hours each player was on (a/day/name) ----
+const dayKey = (t) => new Date(t).toISOString().slice(0, 10).replace(/-/g, "");
+async function trackSeen(store, me, nm, now) {
+  const hr = Math.floor(now / 36e5), k = `a/${dayKey(now)}/${me}`;
+  const cur = await store.get(k, { type: "json" });
+  if (cur && Array.isArray(cur.h) && cur.h.includes(hr)) return;
+  if (!cur && !(await store.get(`j/${me}`, { type: "json" }))) {
+    const had = await store.get(`u/${me}`, { type: "json" });
+    await store.setJSON(`j/${me}`, { nm, t: had ? 0 : now }); // t 0 = joined before stats started
+  }
+  await store.setJSON(k, { nm, h: [...((cur && cur.h) || []), hr].slice(-24) });
+}
+async function ownerStats(store, b, now) {
+  const days = Math.max(1, Math.min(Number(b.days) || 31, 90)), from = dayKey(now - days * 864e5), old = dayKey(now - 120 * 864e5);
+  const act = [];
+  for (const x of (await store.list({ prefix: "a/" })).blobs) {
+    const d = x.key.slice(2, 10);
+    if (d < old) { store.delete(x.key).catch(() => {}); continue; }
+    if (d < from || act.length > 20000) continue;
+    const v = await store.get(x.key, { type: "json" }); if (v && Array.isArray(v.h)) act.push({ n: v.nm || x.key.split("/")[2], h: v.h });
+  }
+  const joins = [];
+  for (const x of (await store.list({ prefix: "j/" })).blobs) { const v = await store.get(x.key, { type: "json" }); if (v) joins.push({ n: v.nm || x.key.slice(2), t: Number(v.t) || 0 }); }
+  const total = (await store.list({ prefix: "u/" })).blobs.length;
+  const online = [];
+  for (const x of (await store.list({ prefix: "p/" })).blobs) { const v = await store.get(x.key, { type: "json" }); if (v && v.nm && now - v.t < 45000 && !online.includes(v.nm)) online.push(v.nm); }
+  return { ok: true, now, total: Math.max(total, joins.length), joins, act, online };
+}
 async function adminOK(store, b) { const u = low(b.u); if (!isAdmin(u)) return false; const cur = await store.get(`s/${u}`, { type: "json" }); return !!(cur && cur.h && cur.h === String(b.h || "")); }
 // ---- Bridge between the Netlify server and the Cloudflare server, so players on both chat together ----
 const tOfKey = (k) => (k.startsWith("c/") ? Number(k.slice(2, 16)) : k.startsWith("i/") ? Number(k.split("/")[2].slice(0, 14)) : 0);
@@ -178,6 +206,7 @@ export async function handle(req, store, opts = {}) {
   try {
     if (b.op === "sync") {
       const id = clean(b.id, 40), nm = clean(b.nm, 40), at = clean(b.at, 40), me = low(nm);
+      if (me) { try { await trackSeen(store, me, nm, now); } catch {} }
       if (nm && b.prof && typeof b.prof === "object") { try { const pf = JSON.parse(JSON.stringify(b.prof).slice(0, 4000)); await store.setJSON(`u/${me}`, { ...pf, t: now }); } catch {} }
       if (id && nm) await store.setJSON(`p/${id}`, { nm, at, t: now, vc: b.vc === 2 ? 2 : b.vc ? 1 : 0, hid: b.hid ? 1 : 0, act: clean(b.act, 60) });
       const since = Number(b.since) || now, isince = Number(b.isince) || now - 7 * 864e5;
@@ -296,6 +325,7 @@ export async function handle(req, store, opts = {}) {
     }
     if (b.op === "admin") {
       if (!(await adminOK(store, b))) return json({ ok: false, error: "no" });
+      if (b.do === "stats") return json(await ownerStats(store, b, now));
       if (b.do === "list") {
         const rl = await store.list({ prefix: "r/" }); const keys = rl.blobs.map((x) => x.key).sort().slice(-60);
         const reports = (await Promise.all(keys.map((k) => store.get(k, { type: "json" }).then((v) => (v ? { k, t: Number(k.slice(2, 16)), ...v } : null))))).filter(Boolean).reverse();
